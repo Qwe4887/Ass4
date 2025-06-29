@@ -1,6 +1,5 @@
 import socket
 import os
-import time
 
 # 定义客户端连接的服务器地址和端口
 HOST = 'localhost'
@@ -8,9 +7,8 @@ PORT = 51234
 DOWNLOAD_PORT = 50001
 
 # 向服务器发送请求并接收响应
-def send_request(filename):
-    client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # 使用UDP
-
+def send_request(filename, file_transfer_client_socket):
+    print(f"发送请求：下载文件 {filename}")  # 调试信息
     # 发送下载请求
     request = f"DOWNLOAD {filename}"
     client_socket.sendto(request.encode('utf-8'), (HOST, PORT))
@@ -27,10 +25,6 @@ def send_request(filename):
         file_size = int(file_info[3])
         transfer_port = int(file_info[5])
 
-        # 启动接收数据的客户端
-        file_transfer_client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-        # 记录已接收字节数
         bytes_received = 0
         with open(f"received_{filename}", "wb") as file:
             while bytes_received < file_size:
@@ -38,12 +32,15 @@ def send_request(filename):
                 start = bytes_received
                 end = min(start + 1023, file_size - 1)  # 每次请求1024字节
                 request_data = f"FILE {filename} GET START {start} END {end}"
-                print(f"请求数据范围: {start}-{end}")  # 打印请求的字节范围
+                print(f"发送请求：字节范围 {start}-{end}")  # 调试信息
                 file_transfer_client_socket.sendto(request_data.encode('utf-8'), (HOST, transfer_port))
 
                 # 接收服务器返回的数据
                 response_data, _ = file_transfer_client_socket.recvfrom(1024)
                 response_message = response_data.decode('utf-8')
+
+                # 打印返回的数据块（前20个字符）
+                print(f"接收到的数据块：{response_message[:20]}...")
 
                 # 处理返回的数据
                 if response_message.startswith(f"FILE {filename} OK"):
@@ -59,15 +56,35 @@ def send_request(filename):
                     print("错误: 无法获取文件数据")
                     break
 
+        # 文件下载完毕后发送CLOSE请求
         file_transfer_client_socket.sendto(f"FILE {filename} CLOSE".encode('utf-8'), (HOST, transfer_port))
         print(f"\n文件 {filename} 下载完成！")
     else:
         print("错误：文件不存在或请求失败")
 
-    # 关闭客户端套接字
-    client_socket.close()
-
 # 主程序
 if __name__ == "__main__":
-    filename_to_download = "file1.txt"  # 要请求的文件名
-    send_request(filename_to_download)
+    # 从文件列表中读取文件名并依次下载
+    try:
+        with open("files.txt", "r") as f:
+            filenames = f.readlines()
+        print(f"找到文件列表：{filenames}")
+    except FileNotFoundError:
+        print("错误：files.txt 文件未找到!")
+        exit()
+
+    # 创建客户端套接字
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    # 通过独立的套接字来处理文件传输
+    file_transfer_client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    # 逐个请求文件下载
+    for filename in filenames:
+        filename = filename.strip()  # 去除换行符
+        print(f"开始下载文件: {filename}")
+        send_request(filename, file_transfer_client_socket)
+
+    # 关闭客户端套接字
+    client_socket.close()
+    file_transfer_client_socket.close()
