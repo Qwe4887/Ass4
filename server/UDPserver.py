@@ -2,11 +2,10 @@ import socket
 import os
 import base64
 import threading
-import time
 
 
 # 服务器函数，用于处理数据传输
-def handle_file_transfer(client_socket, file_name, file_size, client_address, delay=1):
+def handle_file_transfer(client_socket, file_name, file_size, client_address):
     # 为每个文件请求创建独立的端口和套接字
     transfer_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     transfer_port = 50000  # 固定端口（可以随机生成）
@@ -29,9 +28,6 @@ def handle_file_transfer(client_socket, file_name, file_size, client_address, de
                 f.seek(start)
                 file_data = f.read(end - start)
 
-                # 模拟延迟
-                time.sleep(delay)  # 模拟延迟
-
                 # 将二进制数据转换为Base64字符串
                 base64_data = base64.b64encode(file_data).decode()
 
@@ -47,7 +43,7 @@ def handle_file_transfer(client_socket, file_name, file_size, client_address, de
     transfer_socket.close()
 
 
-def udp_server(listen_port, delay=1):
+def udp_server(listen_port):
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server_socket.bind(('0.0.0.0', listen_port))
     print(f"Server listening on port {listen_port}...")
@@ -63,7 +59,7 @@ def udp_server(listen_port, delay=1):
             if os.path.exists(file_name):
                 file_size = os.path.getsize(file_name)
                 threading.Thread(target=handle_file_transfer,
-                                 args=(server_socket, file_name, file_size, client_address, delay)).start()
+                                 args=(server_socket, file_name, file_size, client_address)).start()
             else:
                 response = f"ERR {file_name} NOT_FOUND"
                 server_socket.sendto(response.encode(), client_address)
@@ -73,5 +69,4 @@ def udp_server(listen_port, delay=1):
 
 if __name__ == "__main__":
     listen_port = 51234
-    delay = 2  # 模拟2秒的延迟
-    udp_server(listen_port, delay)
+    udp_server(listen_port)

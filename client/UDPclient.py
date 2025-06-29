@@ -2,26 +2,15 @@ import socket
 import base64
 
 
-# 客户端发送消息并接收响应的重传机制
-def send_and_receive(client_socket, message, server_ip, server_port, timeout, retries=5):
-    attempt = 0
-    while attempt < retries:
-        try:
-            # 发送请求
-            client_socket.sendto(message.encode(), (server_ip, server_port))
-            print(f"Sent message: {message}")
+# 客户端发送消息并接收响应
+def send_and_receive(client_socket, message, server_ip, server_port):
+    # 发送请求
+    client_socket.sendto(message.encode(), (server_ip, server_port))
+    print(f"Sent message: {message}")
 
-            # 等待响应
-            client_socket.settimeout(timeout)  # 设置超时时间
-            response, _ = client_socket.recvfrom(2048)  # 接收响应
-            return response.decode()  # 返回响应数据
-
-        except socket.timeout:
-            attempt += 1
-            print(f"Timeout occurred. Retrying... ({attempt}/{retries})")
-            timeout *= 2  # 增加超时时间
-
-    return None  # 如果超时多次仍然没有响应，返回 None
+    # 等待响应
+    response, _ = client_socket.recvfrom(2048)  # 接收响应
+    return response.decode()  # 返回响应数据
 
 
 # 客户端处理文件下载的函数
@@ -32,8 +21,8 @@ def download_file(server_ip, server_port, filename):
     # 发送下载请求
     message = f'DOWNLOAD {filename}'
 
-    # 等待服务器响应（重传机制）
-    response = send_and_receive(client_socket, message, server_ip, server_port, timeout=2)
+    # 等待服务器响应
+    response = send_and_receive(client_socket, message, server_ip, server_port)
 
     if response is None:
         print("Failed to receive a response from the server.")
@@ -56,8 +45,8 @@ def download_file(server_ip, server_port, filename):
                 end = min(start + 1000, file_size)  # 每次请求1000字节
                 request_message = f'FILE {filename} GET START {start} END {end}'
 
-                # 请求并接收数据块（重传机制）
-                data_response = send_and_receive(client_socket, request_message, server_ip, transfer_port, timeout=2)
+                # 请求并接收数据块
+                data_response = send_and_receive(client_socket, request_message, server_ip, transfer_port)
 
                 if data_response is None:
                     print("Failed to receive data block.")
@@ -79,7 +68,7 @@ def download_file(server_ip, server_port, filename):
 
             # 下载完成后，发送CLOSE请求
             close_message = f"FILE {filename} CLOSE"
-            close_response = send_and_receive(client_socket, close_message, server_ip, transfer_port, timeout=2)
+            close_response = send_and_receive(client_socket, close_message, server_ip, transfer_port)
 
             if close_response is not None and "CLOSE_OK" in close_response:
                 print(f"Download of {filename} complete.")
