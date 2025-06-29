@@ -4,7 +4,7 @@ import base64
 import threading
 
 
-# 服务器函数，用于处理数据传输
+# 服务器函数，用于处理每个客户端的文件传输
 def handle_file_transfer(client_socket, file_name, file_size, client_address):
     # 为每个文件请求创建独立的端口和套接字
     transfer_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -58,6 +58,7 @@ def udp_server(listen_port):
 
             if os.path.exists(file_name):
                 file_size = os.path.getsize(file_name)
+                # 为每个客户端请求创建独立的线程处理文件传输
                 threading.Thread(target=handle_file_transfer,
                                  args=(server_socket, file_name, file_size, client_address)).start()
             else:
