@@ -1,6 +1,5 @@
 import socket
 import base64
-import time
 
 
 # 客户端发送消息并接收响应的重传机制
@@ -25,9 +24,9 @@ def send_and_receive(client_socket, message, server_ip, server_port, timeout, re
     return None  # 如果超时多次仍然没有响应，返回 None
 
 
-# 客户端函数
-def udp_client(server_ip, server_port, filename):
-    # 创建UDP套接字
+# 客户端处理文件下载的函数
+def download_file(server_ip, server_port, filename):
+    # 为每个文件创建独立的 UDP 套接字
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     # 发送下载请求
@@ -93,8 +92,15 @@ def udp_client(server_ip, server_port, filename):
     client_socket.close()
 
 
+# 客户端函数，处理多个文件的下载
+def udp_client(server_ip, server_port, file_list):
+    for filename in file_list:
+        print(f"Starting download for {filename}...")
+        download_file(server_ip, server_port, filename)
+
+
 if __name__ == "__main__":
     server_ip = 'localhost'
     server_port = 51234  # 服务器端口
-    filename = 'example.txt'  # 要下载的文件
-    udp_client(server_ip, server_port, filename)
+    file_list = ['example.txt', 'another_file.txt', 'sample_file.pdf']  # 要下载的文件列表
+    udp_client(server_ip, server_port, file_list)
